@@ -1,0 +1,62 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+*.log
+
+# Byte-compiled / optimized / DLL files
+*.dll
+*.pyc
+*.pyo
+*.pyd
+
+# --- Virtual Environment ---
+venv/
+env/
+.venv/
+
+# --- Environment Variables ---
+.env
+.env.*
+!.env.example
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+
+# --- FastAPI / Uvicorn ---
+*.sqlite3
+instance/
+*.db
+
+# --- Uploads / Media Files ---
+uploads/
+media/
+static/
+
+# --- Alembic ---
+alembic/versions/__pycache__/
+alembic/*cache*
+alembic/*.log
+
+# SQLite WAL files
+*.sqlite3-wal
+*.sqlite3-shm
+
+# --- Tests ---
+.coverage
+pytest_cache/
+htmlcov/
+
+# --- Mypy / Pyright / Ruff / Lint ---
+.mypy_cache/
+.pyrightcache/
+.ruff_cache/
+
+# --- Cache files ---
+.cache/
