@@ -4,9 +4,10 @@ from sqlalchemy.exc import IntegrityError
 from app.controller.user_controller import router as user_route
 from app.core.database import init_db
 from contextlib import asynccontextmanager
+from app.core.config import settings
+
 
 app = FastAPI()
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,10 +18,6 @@ async def lifespan(app: FastAPI):
 
 
 app.include_router(user_route)
-
-
-
-
 
 @app.get("/")
 async def root():

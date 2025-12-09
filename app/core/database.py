@@ -3,12 +3,12 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+from app.core.config import settings
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+
+
+DATABASE_URL = settings.DATABASE_URL
 # e.g. "postgresql+asyncpg://user:password@localhost:5432/dbname"
 
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
