@@ -6,10 +6,12 @@ from app.models.user_model import User
 from app.models.user_profile_model import UserProfile
 from app.utils.generate_expire_time import gen_exp_time
 from app.utils.service.send_email import send_email
+from fastapi import BackgroundTasks
+
 class UserService:
     @staticmethod
     async def create_user_with_profile(
-        db:AsyncSession,data:CreateUserWithProfile
+        db:AsyncSession,data:CreateUserWithProfile, background_tasks: BackgroundTasks
     ):
       async with db.begin():     
         user=User(email=data.email,password=data.password)
@@ -23,5 +25,14 @@ class UserService:
         authentication=await UserRepository.craete_new_authentication(db,authentication)
         
         db.refresh(user)
-        await send_email("md.tazwarul.islam.07@gmail.com","tesing email", "test message")
+
+     
+        # Schedule email in the background
+        background_tasks.add_task(
+                send_email,
+                "md.tazwarul.islam.07@gmail.com",
+                "Testing email",
+                "Test message"
+            )
+        
         return {"user_id":user.id,"message":"A verification code has been sent to your email."}
