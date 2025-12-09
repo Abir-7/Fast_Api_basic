@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship,Column,Enum, DateTime
 from typing import TYPE_CHECKING
 from uuid import uuid4, UUID
 from typing import Optional
-from datetime import datetime ,timezone
+from datetime import datetime
 from app.enums.user_enum import AuthenticationStatus
 from app.core.db_time_field import TimestampField
 if TYPE_CHECKING:
