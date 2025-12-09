@@ -45,7 +45,7 @@ class UserService:
       authentication=await UserRepository.create_new_authentication(db,authentication)
       await db.commit()
       await db.refresh(user)
-
+      db.close()
      
         # Schedule email in the background
       # background_tasks.add_task(
