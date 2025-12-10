@@ -100,13 +100,22 @@ class UserRepository:
 
         user_data=await session.exec(select(User).where(User.id==user_id))
         user_data_result= user_data.one_or_none()
-        user_data_result.is_verified=True # type: ignore
-        user_data_result.account_status=AccountStatus.active.value # type: ignore
+        if user_data_result:
+            user_data_result.is_verified=True 
+            user_data_result.account_status=AccountStatus.active
         
         await session.flush()
         
         return {"user_id":user_id}
-
+    
+    @staticmethod
+    async def updateStatusOfVerification(session:AsyncSession,authentication_id:str,status:AuthenticationStatus)->str:
+        auth_data=await session.exec(select(UserAuthentication).where(UserAuthentication.id==authentication_id))
+        auth_data_result=auth_data.one_or_none()
+        if auth_data_result  :      
+         auth_data_result.authentication_status=status
+        await session.flush()
+        return status
 
 
 
