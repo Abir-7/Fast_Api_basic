@@ -14,4 +14,8 @@ class AuthenticationStatus(str, Enum):
     pending =   "pending"
     expired =   "expired"
     canceled =  "canceled"
-    success =   "success"
+    success =   "success"   
+
+class AuthenticationType(str,Enum):
+    email="email"
+    password="password"

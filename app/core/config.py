@@ -14,5 +14,8 @@ class Settings:
     EMAIL_PASS: str = os.getenv("EMAIL_PASS")
     # data base
     DATABASE_URL: str = os.getenv("DATABASE_URL")
+    ACCESS_TOKEN_SECRET:str=os.getenv("ACCESS_TOKEN_SECRET")
+    REFRESH_TOKEN_SECRET:str=os.getenv("REFRESH_TOKEN_SECRET")
+
     
 settings = Settings()

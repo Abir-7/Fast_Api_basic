@@ -15,6 +15,7 @@ class User(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True,index=True)
     email: str =Field( sa_column=Column(String, unique=True, index=True))
     is_verified:bool=Field(default=False)
+    need_to_reset_password:bool=Field(default=False,nullable=True)
     account_status:AccountStatus = Field(default=AccountStatus.pending,
     sa_column=Column(Enum(AccountStatus,
     )))

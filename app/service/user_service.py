@@ -8,12 +8,16 @@ from app.utils.generate_expire_time import gen_exp_time
 from app.utils.generate_code import generate_numeric_code
 from app.utils.service.send_email import send_email
 from fastapi import BackgroundTasks
-from app.enums.user_enum import AccountStatus
+from app.enums.user_enum import AccountStatus,AuthenticationStatus ,AuthenticationType
 from fastapi import HTTPException 
 from fastapi.responses import JSONResponse 
 from app.utils.password_hashed import hash_password
 from app.utils.is_time_expire import is_time_expired
 from datetime import timezone, datetime
+from typing import Optional
+from app.utils.jwt import create_access_refresh_tokens,create_token,decode_token
+from app.schemas.return_schema.create_access_refresh_token_schema import JwtPayload,AccessRefreshToken
+from app.schemas.return_schema.user_repository_schema import VerifyResetPassResult
 class UserService:
     @staticmethod
     async def create_user_with_profile(
@@ -41,39 +45,83 @@ class UserService:
       profile=UserProfile(user_id=user.id,**profile_data.model_dump())
       profile=await UserRepository.create_profile(db,profile)
 
-      authentication=UserAuthentication(user_id=user.id,code=generate_numeric_code(4),expire_time= gen_exp_time(10) )
+      authentication=UserAuthentication(user_id=user.id,code=generate_numeric_code(4),expire_time= gen_exp_time(10) ,authentication_type=AuthenticationType.email )
       authentication=await UserRepository.create_new_authentication(db,authentication)
       await db.commit()
       await db.refresh(user)
       db.close()
      
         # Schedule email in the background
-      # background_tasks.add_task(
-      #           send_email,
-      #           "md.tazwarul.islam.07@gmail.com",
-      #           "Testing email",
-      #           "Test message"
-      #       )
+      background_tasks.add_task(
+                send_email,
+                "md.tazwarul.islam.07@gmail.com",
+                "Testing email",
+                "Test message"
+            )
         
       return {"user_id":user.id,"message":"A verification code has been sent to your email."}
     
     @staticmethod
-    async def verifyUser(db:AsyncSession,user_id:str,code:str):
-    
-      user_authentication_data=await UserRepository.get_user_auth_data(db,user_id)
-      user_last_verification_data=await UserRepository.get_latest_authentication(db,user_id)
+    async def verifyUser(db: AsyncSession, user_id: str, code: Optional[str]=None,token:Optional[str]=None):
+      verify_data:Optional[VerifyResetPassResult]=None
+      generated_token:Optional[AccessRefreshToken]=None
+      user_data = await UserRepository.get_user_auth_data(db, user_id)
+      user_last_verification_data = await UserRepository.get_latest_authentication(db, user_id)
 
-      if not user_authentication_data:
-        return JSONResponse(status_code=404,content={"message":"No data found"})
-      expire_time = user_last_verification_data.expire_time
-    # Force UTC-aware for consistent output
+      if not user_data:
+        return JSONResponse(status_code=404, content={"message": "Failed to verify"})
+
+      if not user_last_verification_data:
+         return JSONResponse(status_code=404, content={"message": "Failed to verify"})
+      if user_last_verification_data.authentication_status!=AuthenticationStatus.pending:
+         return JSONResponse(status_code=400, content={"message": "Code or Token not matched."})
+
+
+      expire_time: Optional[datetime] = getattr(user_last_verification_data, "expire_time", None)
+
+ 
+      if expire_time is None:
+        return JSONResponse(status_code=400, content={"message": "Expire time missing"})
+
+
       if expire_time.tzinfo is None:
         expire_time = expire_time.replace(tzinfo=timezone.utc)
+      else:
+        expire_time = expire_time.astimezone(timezone.utc)
 
-      return {
-          "isExpired": is_time_expired(expire_time),
-        "exptime": expire_time.isoformat() 
-          # returns "2025-12-09T09:38:52.494253+00:00"
-          ,"now":datetime.now(timezone.utc)
-    }
-      
+      expired = is_time_expired(expire_time)
+
+      if expired:
+        return JSONResponse(status_code=400, content={"message": "Verification time expired"})
+      print(code)
+
+ 
+      if user_last_verification_data.code and user_last_verification_data.token is None:
+        if user_last_verification_data.code!=code:
+          return JSONResponse(status_code=400, content={"message": "Code not matched."})
+        
+      if not user_last_verification_data.code and user_last_verification_data.token:
+         if user_last_verification_data.token !=token:
+          return JSONResponse(status_code=400, content={"message": "Token not matched"})
+
+      if user_last_verification_data.authentication_type==AuthenticationType.email:
+        await UserRepository.verifyUserEmail(db,user_id=user_id,user_authentication_id=user_last_verification_data.id)
+        payload:JwtPayload={
+          "user_id":user_id,
+          "user_email":user_data.email,
+          "user_role":user_data.role
+        }
+        generated_token=create_access_refresh_tokens(payload=payload)
+  
+   
+      if user_last_verification_data.authentication_type==AuthenticationType.password:
+        verify_data= await UserRepository.verifyResetPassword(db,user_id=user_id,user_authentication_id=user_last_verification_data.id)
+
+      await db.commit()
+      db.close()
+      return JSONResponse(status_code=200, content={
+          "user_id":user_id,
+          "access_token": generated_token and generated_token["access_token"],
+          "refresh_token":generated_token and generated_token["refresh_token"],
+          "token": verify_data and verify_data["token"]
+    }   )   

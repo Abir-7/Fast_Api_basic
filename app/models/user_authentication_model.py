@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4, UUID
 from typing import Optional
 from datetime import datetime
-from app.enums.user_enum import AuthenticationStatus
+from app.enums.user_enum import AuthenticationStatus,AuthenticationType
 from app.core.db_time_field import TimestampField
 if TYPE_CHECKING:
     from app.models.user_model import User
@@ -20,7 +20,11 @@ class UserAuthentication(SQLModel, table=True):
         default=AuthenticationStatus.pending, 
         sa_column=Column(Enum(AuthenticationStatus))
     )
-    user: "User" = Relationship(back_populates="user_authentication",)
-     # Timestamp fields
+    authentication_type:AuthenticationType=Field(sa_column=Column(Enum(AuthenticationType)))
+
     created_at: datetime = TimestampField()
     updated_at: datetime = TimestampField(update_on_change=True)
+
+    user: "User" = Relationship(back_populates="user_authentication",)
+
+  
