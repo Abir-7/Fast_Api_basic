@@ -9,20 +9,24 @@ from app.utils.generate_code import generate_numeric_code
 from app.utils.service.send_email import send_email
 from fastapi import BackgroundTasks
 from app.enums.user_enum import AccountStatus,AuthenticationStatus ,AuthenticationType
-from fastapi import HTTPException 
+
 from fastapi.responses import JSONResponse 
-from app.utils.password_hashed import hash_password
+from app.utils.password_hashed import hash_password ,verify_password
 from app.utils.is_time_expire import is_time_expired
 from datetime import timezone, datetime
-from typing import Optional
-from app.utils.jwt import create_access_refresh_tokens,create_token,decode_token
-from app.schemas.return_schema.create_access_refresh_token_schema import JwtPayload,AccessRefreshToken
-from app.schemas.return_schema.user_repository_schema import VerifyResetPassResult
+from typing import Optional , Union
+from app.utils.jwt import create_access_refresh_tokens
+
+from app.schemas.function_return_schema.create_access_refresh_token_schema import JwtPayload,AccessRefreshToken
+from app.schemas.api_response_model.user_login import LoginResponse
+from app.schemas.function_return_schema.user_repository_schema import VerifyResetPassResult
+from app.schemas.api_response_model.user_signup import SignupResponse
+
 class UserService:
     @staticmethod
     async def create_user_with_profile(
         db:AsyncSession,data:CreateUserWithProfile, background_tasks: BackgroundTasks
-    ):
+    )->Union[JSONResponse,SignupResponse]:
       
       user_auth_data=await UserRepository.get_user_auth_data(db,data.email)
 
@@ -35,7 +39,7 @@ class UserService:
 
         if user_auth_data.account_status==AccountStatus.pending or user_auth_data.is_verified==False :
 
-          await UserRepository.delete_user(db,user_auth_data.id)
+          await UserRepository.delete_user(db,str(user_auth_data.id))
 
 
       user=User(email=data.email,password=hash_password(data.password))
@@ -49,7 +53,7 @@ class UserService:
       authentication=await UserRepository.create_new_authentication(db,authentication)
       await db.commit()
       await db.refresh(user)
-      db.close()
+      await db.close()
      
         # Schedule email in the background
       background_tasks.add_task(
@@ -59,7 +63,12 @@ class UserService:
                 "Test message"
             )
         
-      return {"user_id":user.id,"message":"A verification code has been sent to your email."}
+      response= SignupResponse(
+          message= "A verification code has been sent to your email.",
+          user_id= user.id
+        )
+
+      return response
     
     @staticmethod
     async def verifyUser(db: AsyncSession, user_id: str, code: Optional[str]=None,token:Optional[str]=None):
@@ -105,23 +114,45 @@ class UserService:
           return JSONResponse(status_code=400, content={"message": "Token not matched"})
 
       if user_last_verification_data.authentication_type==AuthenticationType.email:
-        await UserRepository.verifyUserEmail(db,user_id=user_id,user_authentication_id=user_last_verification_data.id)
+        await UserRepository.verifyUserEmail(db,user_id=user_id,user_authentication_id=str(user_last_verification_data.id))
         payload:JwtPayload={
           "user_id":user_id,
           "user_email":user_data.email,
           "user_role":user_data.role
         }
-        generated_token=create_access_refresh_tokens(payload=payload)
+        generated_token=create_access_refresh_tokens(payload=dict(payload) )
   
    
       if user_last_verification_data.authentication_type==AuthenticationType.password:
-        verify_data= await UserRepository.verifyResetPassword(db,user_id=user_id,user_authentication_id=user_last_verification_data.id)
+        verify_data= await UserRepository.verifyResetPassword(db,user_id=user_id,user_authentication_id=str(user_last_verification_data.id))
 
       await db.commit()
-      db.close()
+      await db.close()
       return JSONResponse(status_code=200, content={
           "user_id":user_id,
           "access_token": generated_token and generated_token["access_token"],
           "refresh_token":generated_token and generated_token["refresh_token"],
           "token": verify_data and verify_data["token"]
     }   )   
+
+
+    @staticmethod
+    async def userLogin(db:AsyncSession,user_email:str,password:str)-> Union[LoginResponse, JSONResponse]:
+      user_data=await UserRepository.get_user_auth_data(session=db,user_email=user_email)
+      if not user_data: 
+        return JSONResponse(status_code=404,content={"message":"Account not found."})
+      if not verify_password(plain_password=password,hashed_password=user_data.password):
+        return JSONResponse(status_code=404,content={"message":"Password not matched"})
+      if user_data.account_status!=AccountStatus.active:
+        return JSONResponse(status_code=404,content={"message":f"Account status is {user_data.account_status.value}"})
+      
+      payload:JwtPayload={
+      "user_email":user_data.email,
+      "user_id":str(user_data.id),
+      "user_role":user_data.role
+      }
+      
+      generated_token=create_access_refresh_tokens(payload=dict(payload))
+
+      return LoginResponse(user_id=user_data.id, access_token=generated_token["access_token"], refresh_token=generated_token["refresh_token"])
+

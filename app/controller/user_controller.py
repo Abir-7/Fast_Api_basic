@@ -1,10 +1,10 @@
-from fastapi import APIRouter,Depends,HTTPException,BackgroundTasks
+from fastapi import APIRouter,Depends,BackgroundTasks
 from sqlmodel.ext.asyncio.session import AsyncSession
-from app.schemas.user_schema import CreateUserWithProfile ,UserRead
+from app.schemas.user_schema import CreateUserWithProfile ,UserRead ,UserLogin
 from app.schemas.user_verification_schema import verifyUser
 from app.core.database import get_session
 from app.service.user_service import UserService
-
+from app.schemas.api_response_model.user_login import LoginResponse
 router=APIRouter(prefix="/users",tags=["users"])
 
 @router.post('/signup', response_model=UserRead )
@@ -20,3 +20,7 @@ async def verify_user(
 ):
         result=await UserService.verifyUser(db,data.user_id,data.code)
         return result
+
+@router.post('/login', response_model=LoginResponse)
+async def userLogin(data:UserLogin,db:AsyncSession=Depends(get_session)):
+          return await UserService.userLogin(db,data.email,data.password)

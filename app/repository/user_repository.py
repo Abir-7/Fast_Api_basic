@@ -2,13 +2,13 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.models.user_model import User
 from app.models.user_profile_model import UserProfile
 from app.models.user_authentication_model import UserAuthentication
-from app.enums.user_enum import AuthenticationStatus,AuthenticationType
+from app.enums.user_enum import AuthenticationStatus,AuthenticationType ,AccountStatus
 from sqlmodel import select ,desc
 from app.utils.create_random_token import create_random_token
 from app.utils.generate_expire_time import gen_exp_time
 from typing import Optional
-from app.schemas.return_schema.user_repository_schema import VerifyUserEmailResult,VerifyResetPassResult
-
+from app.schemas.function_return_schema.user_repository_schema import VerifyUserEmailResult,VerifyResetPassResult
+from uuid import UUID
 
 
 class UserRepository:
@@ -73,33 +73,35 @@ class UserRepository:
     async def verifyResetPassword(session:AsyncSession,user_id:str,user_authentication_id:str)->VerifyResetPassResult:
         auth_data=await session.exec(select(UserAuthentication).where(UserAuthentication.id==user_authentication_id))
         auth_data_result=auth_data.one_or_none()
-        auth_data_result.authentication_status=AuthenticationStatus.success
+
+        auth_data_result.authentication_status=AuthenticationStatus.success # type: ignore
  
 
         user_data=await session.exec(select(User).where(User.id==user_id))
         user_data_result= user_data.one_or_none()
-        user_data_result.need_to_reset_password=True
+        user_data_result.need_to_reset_password=True # type: ignore
 
         
         new_token= create_random_token()
-        new_auth=UserAuthentication(authentication_type=AuthenticationType.password,user_id=user_id,token=new_token,expire_time=gen_exp_time())
+        new_auth=UserAuthentication(authentication_type=AuthenticationType.password,user_id=UUID(user_id),token=new_token,expire_time=gen_exp_time())
         session.add(new_auth)
 
         await session.flush()
 
-        return {"token":new_auth.token,"user_id":user_id}
+        return {"token":new_token,"user_id":user_id}
     
     @staticmethod
     async def verifyUserEmail(session:AsyncSession,user_id:str ,user_authentication_id:str)->VerifyUserEmailResult:
 
         auth_data=await session.exec(select(UserAuthentication).where(UserAuthentication.id==user_authentication_id))
         auth_data_result=auth_data.one_or_none()
-        auth_data_result.authentication_status=AuthenticationStatus.success
+        auth_data_result.authentication_status=AuthenticationStatus.success # type: ignore
 
 
         user_data=await session.exec(select(User).where(User.id==user_id))
         user_data_result= user_data.one_or_none()
-        user_data_result.is_verified=True
+        user_data_result.is_verified=True # type: ignore
+        user_data_result.account_status=AccountStatus.active.value # type: ignore
         
         await session.flush()
         
