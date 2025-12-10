@@ -11,8 +11,8 @@ router=APIRouter(prefix="/users",tags=["users"])
 async def create_user(
     data:CreateUserWithProfile,  background_tasks: BackgroundTasks,db:AsyncSession=Depends(get_session),
 ):
-        user = await UserService.create_user_with_profile(db, data,background_tasks)
-        return user
+        result = await UserService.create_user_with_profile(db, data,background_tasks)
+        return result
 
 @router.post("/verify-user")
 async def verify_user(
@@ -23,4 +23,5 @@ async def verify_user(
 
 @router.post('/login', response_model=LoginResponse)
 async def userLogin(data:UserLogin,db:AsyncSession=Depends(get_session)):
-          return await UserService.userLogin(db,data.email,data.password)
+          result=await UserService.userLogin(db,data.email,data.password)
+          return result
