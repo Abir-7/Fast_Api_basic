@@ -38,7 +38,6 @@ PyJWT==2.10.1
 pyright==1.1.407
 python-dotenv==1.2.1
 python-multipart==0.0.20
-PyYAML==6.0.3
 rich==14.2.0
 rich-toolkit==0.17.0
 rignore==0.7.6

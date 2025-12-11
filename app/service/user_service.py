@@ -21,6 +21,8 @@ from app.schemas.api_response_model.user_login import LoginResponse
 from app.schemas.function_return_schema.user_repository_schema import VerifyResetPassResult
 from app.schemas.api_response_model.user_signup import SignupResponse
 from app.schemas.api_response_model.verify_user import VerifyUserResponse
+from app.schemas.api_response_model.resend_code import ResendResponse
+
 class UserService:
     @staticmethod
     async def create_user_with_profile(
@@ -82,7 +84,7 @@ class UserService:
         raise HTTPException(status_code=404, detail="Failed to verify")
       
       if user_last_verification_data.authentication_status!=AuthenticationStatus.pending:
-         raise HTTPException(status_code=400, detail="Code or Token not matched.")
+         raise HTTPException(status_code=400, detail="No invalid code found for resend.")
 
 
 
@@ -155,18 +157,19 @@ class UserService:
       return LoginResponse(user_id=user_data.id, access_token=generated_token["access_token"], refresh_token=generated_token["refresh_token"])
     
     @staticmethod
-    async def resendCode(db:AsyncSession,user_id:str,)->str:
+    async def resendCode(db:AsyncSession,user_id:str,)->ResendResponse:
       user_last_verification_data = await UserRepository.get_latest_authentication(db, user_id)
       if not user_last_verification_data:
         raise HTTPException(status_code=404,detail="Failed to send verification code.")
-      
+      print("acb")
       await UserRepository.updateStatusOfVerification(db,str(user_last_verification_data.id),AuthenticationStatus.canceled)
 
       new_auth_data=UserAuthentication(authentication_type=user_last_verification_data.authentication_type,code=generate_numeric_code(4),expire_time=gen_exp_time(),user_id=user_last_verification_data.user_id)
       
       await UserRepository.create_new_authentication(session=db,data=new_auth_data)
       await db.commit()
-      return user_id
+      res=ResendResponse(user_id=user_id)
+      return res
 
 
 

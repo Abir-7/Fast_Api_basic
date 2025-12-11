@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field, Relationship ,Column,Enum,String
+from sqlmodel import SQLModel, Relationship ,Column,Enum,String ,Field # type: ignore
 from datetime import datetime
 from app.core.db_time_field import TimestampField
 from typing import Optional, TYPE_CHECKING

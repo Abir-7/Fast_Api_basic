@@ -5,6 +5,9 @@ from app.schemas.user_verification_schema import verifyUser
 from app.core.database import get_session
 from app.service.user_service import UserService
 from app.schemas.api_response_model.user_login import LoginResponse 
+from app.schemas.api_response_model.verify_user import VerifyUserResponse
+from app.schemas.api_response_model.resend_code import ResendResponse
+
 router=APIRouter(prefix="/users",tags=["users"])
 
 @router.post('/signup', response_model=UserRead )
@@ -14,7 +17,7 @@ async def create_user(
         result = await UserService.create_user_with_profile(db, data,background_tasks)
         return result
 
-@router.post("/verify-user")
+@router.post("/verify-user",response_model=VerifyUserResponse)
 async def verify_user(
         data:verifyUser,db:AsyncSession=Depends(get_session)
 ):
@@ -27,8 +30,8 @@ async def userLogin(data:UserLogin,db:AsyncSession=Depends(get_session)
         result=await UserService.userLogin(db,data.email,data.password)
         return result
 
-@router.post('/resend', response_model=LoginResponse)
+@router.post('/resend', response_model=ResendResponse)
 async def resendCode(data:ResendCode,db:AsyncSession=Depends(get_session)
 ):
         result=await UserService.resendCode(db,str(data.user_id))
-        return {"user_id":result}
+        return result
