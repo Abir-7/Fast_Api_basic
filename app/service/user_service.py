@@ -170,6 +170,14 @@ class UserService:
       await db.commit()
       res=ResendResponse(user_id=user_id)
       return res
+    @staticmethod
+    async def forgotPasswordRequest(db:AsyncSession,user_email:str,)->ResendResponse:
+      user_data=await UserRepository.get_user_auth_data(db,user_email=user_email)
+      if not user_data:
+        raise HTTPException(status_code=404,)
+      res=ResendResponse(user_id=str(user_data.id))
+      return res
+     
 
 
 
