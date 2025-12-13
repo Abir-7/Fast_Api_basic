@@ -1,5 +1,5 @@
 from sqlmodel.ext.asyncio.session import AsyncSession
-from app.schemas.user_schema import CreateUserWithProfile
+from app.schemas.user_schema import CreateUserWithProfile ,ResetPassword,UserUpdate
 from app.repository.user_repository import UserRepository
 from app.models.user_authentication_model import UserAuthentication
 from app.models.user_model import User
@@ -19,9 +19,9 @@ from app.utils.jwt import create_access_refresh_tokens
 from app.schemas.function_return_schema.create_access_refresh_token_schema import JwtPayload,AccessRefreshToken
 from app.schemas.api_response_model.user_login import LoginResponse
 from app.schemas.function_return_schema.user_repository_schema import VerifyResetPassResult
-from app.schemas.api_response_model.user_signup import SignupResponse
+from app.schemas.api_response_model.user_signup import SignupResponse 
 from app.schemas.api_response_model.verify_user import VerifyUserResponse
-from app.schemas.api_response_model.resend_code import ResendResponse
+from app.schemas.api_response_model.resend_code import ResendResponse 
 
 class UserService:
     @staticmethod
@@ -178,6 +178,7 @@ class UserService:
         raise HTTPException(status_code=404,detail="Account not found.")
       new= UserAuthentication(authentication_type=AuthenticationType.password,code=generate_numeric_code(4),expire_time=gen_exp_time(),user_id=user_data.id)
       await UserRepository.create_new_authentication(data=new,session=db)
+      await db.commit()
 
       background_tasks.add_task(
                 send_email,
@@ -188,7 +189,28 @@ class UserService:
       
       res=ResendResponse(user_id=str(user_data.id))
       return res
-     
+    @staticmethod 
+
+    async def resetPassword(db:AsyncSession,data:ResetPassword):
+      users_new_auth=await UserRepository.get_latest_authentication(db,str(data.user_id))
+      if not users_new_auth:
+        raise HTTPException(status_code=404,detail="No Data Found.")
+
+      if is_time_expired(users_new_auth.expire_time):
+        raise HTTPException(status_code=400,detail="Password change time expired.")
+      
+      if data.new_password !=data.confirm_password:
+        raise HTTPException(status_code=400,detail="Password not matched")
+      
+
+      await UserRepository.updateStatusOfVerification(db,str(users_new_auth.id),AuthenticationStatus.success)
+
+      update=UserUpdate(password=data.new_password,need_to_reset_password=False)
+      await UserRepository.updateUser(db,user_id=str(data.user_id),data=update)
+      await db.commit()
+
+      return {"message":"Password reset successfully."}
+
 
 
 

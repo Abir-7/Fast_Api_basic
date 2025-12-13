@@ -1,6 +1,6 @@
 from fastapi import APIRouter,Depends,BackgroundTasks
 from sqlmodel.ext.asyncio.session import AsyncSession
-from app.schemas.user_schema import CreateUserWithProfile ,UserRead ,UserLogin,ResendCode ,RequestForgotPassword
+from app.schemas.user_schema import CreateUserWithProfile ,UserRead ,UserLogin,ResendCode ,RequestForgotPassword, ResetPassword
 from app.schemas.user_verification_schema import verifyUser
 from app.core.database import get_session
 from app.service.user_service import UserService
@@ -41,3 +41,10 @@ async def reqForResetPassword(data:RequestForgotPassword,background_tasks: Backg
 ):
         result=await UserService.forgotPasswordRequest(db=db,user_email=data.email,background_tasks=background_tasks)    
         return result
+@router.post('/reset-password')
+async def resetPassword(data:ResetPassword,db:AsyncSession=Depends(get_session)):
+        result=await UserService.resetPassword(db=db,data=data)
+
+        return result
+
+        

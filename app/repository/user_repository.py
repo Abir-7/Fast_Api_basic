@@ -9,8 +9,8 @@ from app.utils.generate_expire_time import gen_exp_time
 from typing import Optional
 from app.schemas.function_return_schema.user_repository_schema import VerifyUserEmailResult,VerifyResetPassResult
 from uuid import UUID
-
-
+from app.schemas.user_schema import UserUpdate
+from app.utils.password_hashed import hash_password
 class UserRepository:
     @staticmethod
     async def get_user_auth_data(session:AsyncSession,user_email:Optional[str]=None,user_id:Optional[str]=None):
@@ -86,6 +86,8 @@ class UserRepository:
         new_auth=UserAuthentication(authentication_type=AuthenticationType.password,user_id=UUID(user_id),token=new_token,expire_time=gen_exp_time())
         session.add(new_auth)
 
+        session.add(user_data_result)
+        session.add( auth_data_result)
         await session.flush()
 
         return {"token":new_token,"user_id":user_id}
@@ -96,14 +98,15 @@ class UserRepository:
         auth_data=await session.exec(select(UserAuthentication).where(UserAuthentication.id==user_authentication_id))
         auth_data_result=auth_data.one_or_none()
         auth_data_result.authentication_status=AuthenticationStatus.success # type: ignore
-
+        session.add(auth_data_result)
 
         user_data=await session.exec(select(User).where(User.id==user_id))
         user_data_result= user_data.one_or_none()
         if user_data_result:
             user_data_result.is_verified=True 
             user_data_result.account_status=AccountStatus.active
-        
+        session.add(user_data_result)
+
         await session.flush()
         
         return {"user_id":user_id}
@@ -114,11 +117,26 @@ class UserRepository:
         auth_data_result=auth_data.one_or_none()
         if auth_data_result  :      
          auth_data_result.authentication_status=status
+         session.add(auth_data_result)
         await session.flush()
         return status
+    
+    @staticmethod
+    async def updateUser(session:AsyncSession,user_id:str,data:UserUpdate
+    ):
+        user=await session.exec(select(User).where(User.id==user_id))
+        user=user.one_or_none()
 
+        if not user:
+            raise ValueError("User not found")
+        
+        update_data = data.model_dump(exclude_unset=True)
 
+        if "password" in update_data:
+            user.password = hash_password(update_data.pop("password"))
 
-
-
-
+        for field, value in update_data.items():
+         setattr(user, field, value)
+        
+        session.add(user)
+        await session.flush()
