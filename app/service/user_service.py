@@ -57,7 +57,7 @@ class UserService:
       # Schedule email in the background
       background_tasks.add_task(
                 send_email,
-                "md.tazwarul.islam.07@gmail.com",
+                data.email,
                 "Testing email",
                 "Test message"
             )
@@ -170,11 +170,22 @@ class UserService:
       await db.commit()
       res=ResendResponse(user_id=user_id)
       return res
+    
     @staticmethod
-    async def forgotPasswordRequest(db:AsyncSession,user_email:str,)->ResendResponse:
+    async def forgotPasswordRequest(db:AsyncSession,user_email:str,background_tasks:BackgroundTasks)->ResendResponse:
       user_data=await UserRepository.get_user_auth_data(db,user_email=user_email)
       if not user_data:
-        raise HTTPException(status_code=404,)
+        raise HTTPException(status_code=404,detail="Account not found.")
+      new= UserAuthentication(authentication_type=AuthenticationType.password,code=generate_numeric_code(4),expire_time=gen_exp_time(),user_id=user_data.id)
+      await UserRepository.create_new_authentication(data=new,session=db)
+
+      background_tasks.add_task(
+                send_email,
+                user_email,
+                "Testing email",
+                "Test message"
+            )
+      
       res=ResendResponse(user_id=str(user_data.id))
       return res
      

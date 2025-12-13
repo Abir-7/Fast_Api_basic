@@ -1,10 +1,10 @@
-from pydantic import BaseModel,field_validator
+from pydantic import BaseModel,field_validator,EmailStr
 
 from app.schemas.user_profile_schema import CreateUserProfile
 from uuid import UUID
 
 class CreateUser(BaseModel):   
-    email: str
+    email: EmailStr
     password: str
     @field_validator("email")
     def normalize_email(cls, v: str): 
@@ -36,3 +36,6 @@ class UserLogin(BaseModel):
 
 class ResendCode(BaseModel):
     user_id: UUID
+
+class RequestForgotPassword(BaseModel):
+    email: EmailStr
