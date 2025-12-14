@@ -22,7 +22,7 @@ class UserRepository:
 
         if profile is None:
             return None
-
+        print(data)
         for field, value in data.items():
             setattr(profile, field, value)
 

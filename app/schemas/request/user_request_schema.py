@@ -2,6 +2,7 @@ from pydantic import BaseModel,field_validator,EmailStr
 from typing import Optional
 from app.enums.user_enum import AccountStatus
 
+
 class CreateUser(BaseModel):   
     email: EmailStr
     password: str
@@ -19,10 +20,10 @@ class UpdateUser(BaseModel):
     is_verified: Optional[bool] = None
     need_to_reset_password: Optional[bool] = None
 
+
 class UpdateUserProfile(BaseModel):
     full_name: Optional[str] = None
     age: Optional[int] = None
-    image: Optional[str] = None
-    image_id: Optional[str] = None
-    class Config:
-        extra = "forbid"
+    model_config = {
+        "extra": "forbid"  # forbid unknown fields
+    }
