@@ -1,7 +1,7 @@
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.schemas.request.auth_request_schema import CreateUserWithProfile ,ResetPassword
 from app.schemas.request.user_request_schema import UpdateUser
-from app.repository.user_repository import UserRepository
+from app.repository.auth_repository import AuthRepository
 from app.models.user_authentication_model import UserAuthentication
 from app.models.user_model import User
 from app.models.user_profile_model import UserProfile
@@ -29,13 +29,13 @@ from app.schemas.response.auth_response_schema import VerifyUserEmailResponse, V
 
 
 
-class UserService:
+class AuthService:
     @staticmethod
     async def create_user_with_profile(
         db:AsyncSession,data:CreateUserWithProfile, background_tasks: BackgroundTasks
     )->SignupResponse:
       
-      user_auth_data=await UserRepository.get_user_auth_data(db,data.email)
+      user_auth_data=await AuthRepository.get_user_auth_data(db,data.email)
 
       if user_auth_data:
 
@@ -44,18 +44,18 @@ class UserService:
 
         if user_auth_data.account_status==AccountStatus.pending or user_auth_data.is_verified==False :
 
-          await UserRepository.delete_user(db,str(user_auth_data.id))
+          await AuthRepository.delete_user(db,str(user_auth_data.id))
 
 
       user=User(email=data.email,password=hash_password(data.password))
-      user=await UserRepository.create_user(db,user)
+      user=await AuthRepository.create_user(db,user)
 
       profile_data=data.profile
       profile=UserProfile(user_id=user.id,**profile_data.model_dump())
-      profile=await UserRepository.create_profile(db,profile)
+      profile=await AuthRepository.create_profile(db,profile)
 
       authentication=UserAuthentication(user_id=user.id,code=generate_numeric_code(4),expire_time= gen_exp_time(10) ,authentication_type=AuthenticationType.email )
-      authentication=await UserRepository.create_new_authentication(db,authentication)
+      authentication=await AuthRepository.create_new_authentication(db,authentication)
       await db.commit()
       await db.refresh(user)
    
@@ -79,8 +79,8 @@ class UserService:
     async def verifyUser(db: AsyncSession, user_id: str, code: Optional[str]=None,token:Optional[str]=None)->Union[VerifyUserResetPasswordResponse,VerifyUserEmailResponse]:
       verify_data:Optional[VerifyUserResetPasswordResponse]=None
       generated_token:Optional[AccessRefreshToken]=None
-      user_data = await UserRepository.get_user_auth_data(db, user_id)
-      user_last_verification_data = await UserRepository.get_latest_authentication(db, user_id)
+      user_data = await AuthRepository.get_user_auth_data(db, user_id)
+      user_last_verification_data = await AuthRepository.get_latest_authentication(db, user_id)
 
       if not user_data:
         raise HTTPException(status_code=404, detail="Failed to verify")
@@ -121,7 +121,7 @@ class UserService:
       res:Optional[Union[VerifyUserResetPasswordResponse, VerifyUserEmailResponse]] = None
 
       if user_last_verification_data.authentication_type==AuthenticationType.email:
-        await UserRepository.verifyUserEmail(db,user_id=user_id,user_authentication_id=str(user_last_verification_data.id))
+        await AuthRepository.verifyUserEmail(db,user_id=user_id,user_authentication_id=str(user_last_verification_data.id))
         payload:JwtPayload={
           "user_id":user_id,
           "user_email":user_data.email,
@@ -132,7 +132,7 @@ class UserService:
   
    
       if user_last_verification_data.authentication_type==AuthenticationType.password:
-        verify_data= await UserRepository.verifyResetPassword(db,user_id=user_id,user_authentication_id=str(user_last_verification_data.id))      
+        verify_data= await AuthRepository.verifyResetPassword(db,user_id=user_id,user_authentication_id=str(user_last_verification_data.id))      
         res=VerifyUserResetPasswordResponse(token=verify_data.token,user_id=UUID(user_id))
 
       if res is None:
@@ -144,7 +144,7 @@ class UserService:
 
     @staticmethod
     async def userLogin(db:AsyncSession,user_email:str,password:str)-> LoginResponse:
-      user_data=await UserRepository.get_user_auth_data(session=db,user_email=user_email)
+      user_data=await AuthRepository.get_user_auth_data(session=db,user_email=user_email)
       if not user_data: 
         raise HTTPException(status_code=404, detail="Account not found.") 
       if not verify_password(plain_password=password,hashed_password=user_data.password):
@@ -164,26 +164,26 @@ class UserService:
     
     @staticmethod
     async def resendCode(db:AsyncSession,user_id:str,)->UserIdResponse:
-      user_last_verification_data = await UserRepository.get_latest_authentication(db, user_id)
+      user_last_verification_data = await AuthRepository.get_latest_authentication(db, user_id)
       if not user_last_verification_data:
         raise HTTPException(status_code=404,detail="Failed to send verification code.")
       print("acb")
-      await UserRepository.updateStatusOfVerification(db,str(user_last_verification_data.id),AuthenticationStatus.canceled)
+      await AuthRepository.updateStatusOfVerification(db,str(user_last_verification_data.id),AuthenticationStatus.canceled)
 
       new_auth_data=UserAuthentication(authentication_type=user_last_verification_data.authentication_type,code=generate_numeric_code(4),expire_time=gen_exp_time(),user_id=user_last_verification_data.user_id)
       
-      await UserRepository.create_new_authentication(session=db,data=new_auth_data)
+      await AuthRepository.create_new_authentication(session=db,data=new_auth_data)
       await db.commit()
       res=UserIdResponse(user_id=UUID(user_id))
       return res
     
     @staticmethod
     async def forgotPasswordRequest(db:AsyncSession,user_email:str,background_tasks:BackgroundTasks)->UserIdResponse:
-      user_data=await UserRepository.get_user_auth_data(db,user_email=user_email)
+      user_data=await AuthRepository.get_user_auth_data(db,user_email=user_email)
       if not user_data:
         raise HTTPException(status_code=404,detail="Account not found.")
       new= UserAuthentication(authentication_type=AuthenticationType.password,code=generate_numeric_code(4),expire_time=gen_exp_time(),user_id=user_data.id)
-      await UserRepository.create_new_authentication(data=new,session=db)
+      await AuthRepository.create_new_authentication(data=new,session=db)
       await db.commit()
 
       background_tasks.add_task(
@@ -198,7 +198,7 @@ class UserService:
     @staticmethod 
 
     async def resetPassword(db:AsyncSession,data:ResetPassword):
-      users_new_auth=await UserRepository.get_latest_authentication(db,str(data.user_id))
+      users_new_auth=await AuthRepository.get_latest_authentication(db,str(data.user_id))
       if not users_new_auth:
         raise HTTPException(status_code=404,detail="No Data Found.")
 
@@ -209,10 +209,10 @@ class UserService:
         raise HTTPException(status_code=400,detail="Password not matched")
       
 
-      await UserRepository.updateStatusOfVerification(db,str(users_new_auth.id),AuthenticationStatus.success)
+      await AuthRepository.updateStatusOfVerification(db,str(users_new_auth.id),AuthenticationStatus.success)
 
       update=UpdateUser(password=data.new_password,need_to_reset_password=False)
-      await UserRepository.updateUser(db,user_id=str(data.user_id),data=update)
+      await AuthRepository.updateUser(db,user_id=str(data.user_id),data=update)
       await db.commit()
 
       return {"message":"Password reset successfully."}

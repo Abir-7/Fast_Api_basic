@@ -1,9 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
-from app.controller.auth_controller import router as user_route
+from app.controller.auth_controller import router as auth_route
 from app.core.database import init_db
 from contextlib import asynccontextmanager
+ 
+from app.controller.user_controller import router as user_route
 
 
 
@@ -17,7 +19,9 @@ async def lifespan(app: FastAPI):
     # This runs on shutdown (optional cleanup)
 
 
+app.include_router(auth_route)
 app.include_router(user_route)
+app.include_router
 
 @app.get("/")
 async def root():

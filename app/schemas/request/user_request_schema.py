@@ -18,3 +18,11 @@ class UpdateUser(BaseModel):
     account_status: Optional[AccountStatus] = None
     is_verified: Optional[bool] = None
     need_to_reset_password: Optional[bool] = None
+
+class UpdateUserProfile(BaseModel):
+    full_name: Optional[str] = None
+    age: Optional[int] = None
+    image: Optional[str] = None
+    image_id: Optional[str] = None
+    class Config:
+        extra = "forbid"

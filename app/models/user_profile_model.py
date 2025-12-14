@@ -12,8 +12,8 @@ class UserProfile(SQLModel, table=True):
     user_id: UUID = Field(foreign_key="user.id",ondelete="CASCADE")
     full_name: str
     age: int
-
-    # Forward reference as string
-    user: "User" = Relationship(back_populates="profile",)
+    image:str =Field(nullable=True,default="")
+    image_id:str=Field(nullable=True,default="")
     created_at: datetime = TimestampField()
     updated_at: datetime = TimestampField(update_on_change=True)
+    user: "User" = Relationship(back_populates="profile",)
