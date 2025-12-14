@@ -1,25 +1,26 @@
 from fastapi import APIRouter,Depends,BackgroundTasks
 from sqlmodel.ext.asyncio.session import AsyncSession
-from app.schemas.user_schema import CreateUserWithProfile ,UserRead ,UserLogin,ResendCode ,RequestForgotPassword, ResetPassword
-from app.schemas.user_verification_schema import verifyUser
+from app.schemas.request.auth_request_schema import CreateUserWithProfile  ,UserLogin,ResendCode ,RequestForgotPassword, ResetPassword
+
 from app.core.database import get_session
-from app.service.user_service import UserService
-from app.schemas.api_response_model.user_login import LoginResponse 
-from app.schemas.api_response_model.verify_user import VerifyUserResponse
-from app.schemas.api_response_model.resend_code import ResendResponse
+from app.service.auth_service import UserService
+from app.schemas.response.auth_response_schema import SignupResponse,UserIdResponse,VerifyUserEmailResponse,VerifyUserResetPasswordResponse,LoginResponse , NewAccessTokenResponse
+from typing import Union
+from app.schemas.request.auth_request_schema import VerifyUser ,NewAccessToken
 
-router=APIRouter(prefix="/users",tags=["users"])
 
-@router.post('/signup', response_model=UserRead )
+router=APIRouter(prefix="/auth",tags=["auth"])
+
+@router.post('/signup', response_model=SignupResponse )
 async def create_user(
     data:CreateUserWithProfile,  background_tasks: BackgroundTasks,db:AsyncSession=Depends(get_session)
 ):
         result = await UserService.create_user_with_profile(db, data,background_tasks)
         return result
 
-@router.post("/verify-user",response_model=VerifyUserResponse)
+@router.post("/verify-user",response_model=Union[VerifyUserEmailResponse,VerifyUserResetPasswordResponse])
 async def verify_user(
-        data:verifyUser,db:AsyncSession=Depends(get_session)
+        data:VerifyUser,db:AsyncSession=Depends(get_session)
 ):
         result=await UserService.verifyUser(db,data.user_id,data.code)
         return result
@@ -30,21 +31,28 @@ async def userLogin(data:UserLogin,db:AsyncSession=Depends(get_session)
         result=await UserService.userLogin(db,data.email,data.password)
         return result
 
-@router.post('/resend', response_model=ResendResponse)
+@router.post('/resend', response_model=UserIdResponse)
 async def resendCode(data:ResendCode,db:AsyncSession=Depends(get_session)
 ):
         result=await UserService.resendCode(db,str(data.user_id))
         return result
 
-@router.post('/request-for-reset-password',response_model=ResendResponse)
+@router.post('/request-for-reset-password',response_model=UserIdResponse)
 async def reqForResetPassword(data:RequestForgotPassword,background_tasks: BackgroundTasks,db:AsyncSession=Depends(get_session)
 ):
         result=await UserService.forgotPasswordRequest(db=db,user_email=data.email,background_tasks=background_tasks)    
         return result
-@router.post('/reset-password')
-async def resetPassword(data:ResetPassword,db:AsyncSession=Depends(get_session)):
-        result=await UserService.resetPassword(db=db,data=data)
 
+@router.post('/reset-password')
+async def resetPassword(data:ResetPassword,db:AsyncSession=Depends(get_session)
+):
+        result=await UserService.resetPassword(db=db,data=data)
+        return result
+
+@router.post('/get-new-access-token')
+async def reqNewAccessToken(data:NewAccessToken
+)->NewAccessTokenResponse:
+        result= UserService.getNewAccessToken(refresh_token=data.refresh_token)
         return result
 
         

@@ -3,7 +3,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 from app.core.config import settings
-from app.schemas.function_return_schema.jwt_token_schema import AccessRefreshToken,JwtPayload
+from app.schemas.internal.jwt_token_schema import AccessRefreshToken,JwtPayload
 # Secret keys — keep them safe and load from env in production
 
 ACCESS_SECRET_KEY: str = settings.ACCESS_TOKEN_SECRET

@@ -1,10 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
-from app.controller.user_controller import router as user_route
+from app.controller.auth_controller import router as user_route
 from app.core.database import init_db
 from contextlib import asynccontextmanager
-from app.core.config import settings
+
 
 
 app = FastAPI()

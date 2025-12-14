@@ -3,7 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials,HTTPBearer
 from fastapi import Depends,HTTPException,status
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.database import get_session
-from app.schemas.function_return_schema.jwt_token_schema import JwtPayload
+from app.schemas.internal.jwt_token_schema import JwtPayload
 from typing import Optional,List
 from app.models.user_model import User
 from uuid import UUID

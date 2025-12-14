@@ -7,10 +7,11 @@ from sqlmodel import select ,desc
 from app.utils.create_random_token import create_random_token
 from app.utils.generate_expire_time import gen_exp_time
 from typing import Optional
-from app.schemas.function_return_schema.user_repository_schema import VerifyUserEmailResult,VerifyResetPassResult
+from app.schemas.response.auth_response_schema import VerifyUserResetPasswordResponse ,UserIdResponse
 from uuid import UUID
-from app.schemas.user_schema import UserUpdate
+from app.schemas.request.user_request_schema import UpdateUser
 from app.utils.password_hashed import hash_password
+
 class UserRepository:
     @staticmethod
     async def get_user_auth_data(session:AsyncSession,user_email:Optional[str]=None,user_id:Optional[str]=None):
@@ -70,7 +71,7 @@ class UserRepository:
         return result.one_or_none()
     
     @staticmethod
-    async def verifyResetPassword(session:AsyncSession,user_id:str,user_authentication_id:str)->VerifyResetPassResult:
+    async def verifyResetPassword(session:AsyncSession,user_id:str,user_authentication_id:str)->VerifyUserResetPasswordResponse:
         auth_data=await session.exec(select(UserAuthentication).where(UserAuthentication.id==user_authentication_id))
         auth_data_result=auth_data.one_or_none()
 
@@ -90,10 +91,12 @@ class UserRepository:
         session.add( auth_data_result)
         await session.flush()
 
-        return {"token":new_token,"user_id":user_id}
+        res=VerifyUserResetPasswordResponse(token=new_token,user_id=UUID(user_id))
+
+        return res
     
     @staticmethod
-    async def verifyUserEmail(session:AsyncSession,user_id:str ,user_authentication_id:str)->VerifyUserEmailResult:
+    async def verifyUserEmail(session:AsyncSession,user_id:str ,user_authentication_id:str)->UserIdResponse:
 
         auth_data=await session.exec(select(UserAuthentication).where(UserAuthentication.id==user_authentication_id))
         auth_data_result=auth_data.one_or_none()
@@ -108,8 +111,10 @@ class UserRepository:
         session.add(user_data_result)
 
         await session.flush()
-        
-        return {"user_id":user_id}
+
+        res=UserIdResponse(user_id=UUID(user_id))
+
+        return res
     
     @staticmethod
     async def updateStatusOfVerification(session:AsyncSession,authentication_id:str,status:AuthenticationStatus)->str:
@@ -122,7 +127,7 @@ class UserRepository:
         return status
     
     @staticmethod
-    async def updateUser(session:AsyncSession,user_id:str,data:UserUpdate
+    async def updateUser(session:AsyncSession,user_id:str,data:UpdateUser
     ):
         user=await session.exec(select(User).where(User.id==user_id))
         user=user.one_or_none()
