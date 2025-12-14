@@ -12,6 +12,6 @@ router=APIRouter(prefix="/user",tags=["user"])
 @router.patch("/update-profile",response_model=UserProfile)
 async def update_user_profile(data:UpdateUserProfile,current_user:User=Depends(require_roles([UserRole.USER])),db:AsyncSession=Depends(get_session)):
     
-    result=await UserService.update_user_profile(db,data,str(current_user.id))
+    result=await UserService.update_user_profile(db,data,current_user.id)
 
     return result

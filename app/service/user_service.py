@@ -7,7 +7,7 @@ from app.models.user_profile_model import UserProfile
 
 class UserService:
     @staticmethod
-    async def update_user_profile(db:AsyncSession,data:UpdateUserProfile,user_id:str)->UserProfile:
+    async def update_user_profile(db:AsyncSession,data:UpdateUserProfile,user_id:UUID)->UserProfile:
         update_data = data.model_dump(exclude_unset=True)
 
         if not update_data:
@@ -18,7 +18,7 @@ class UserService:
         
         profile = await UserRepository.update_user_profile(
             session=db,
-            data=update_data,     user_id=UUID(user_id),
+            data=update_data,     user_id=user_id,
         )
 
         if not profile:
