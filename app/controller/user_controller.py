@@ -22,9 +22,9 @@ current_user:User=Depends(require_roles([UserRole.USER])),db:AsyncSession=Depend
     print(update_data,"----->")
 
     if file:
-        upload_result = await UploadService.save_file(file) # type: ignore
+        upload_result = await UploadService.save_file(file,"image") # type: ignore
         update_data["image"] = upload_result["path"]
-        update_data["image_id"] = upload_result["filename"]
+        update_data["image_id"] = upload_result["path"]
     result=await UserService.update_user_profile(db,update_data,current_user.id)
 
     return result

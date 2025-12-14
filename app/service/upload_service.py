@@ -1,35 +1,42 @@
-# app/services/upload_service.py
-import shutil
-from pathlib import Path
-from uuid import uuid4
-from fastapi import UploadFile
-from app.utils.file_utils import detect_file_type
+import os
+import uuid
+from fastapi import UploadFile, HTTPException
+from typing import Dict
 
-UPLOAD_DIR = Path("uploads")  # base folder for all files
+ALLOWED_FILE_TYPES = {
+    "image": ["image/jpeg", "image/png", "image/gif"],
+    "audio": ["audio/mpeg", "audio/wav"],
+    "video": ["video/mp4", "video/mkv"],
+    "doc": ["application/pdf", "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    "other": []
+}
+
+UPLOAD_ROOT = "uploads"  # base folder
+
 
 class UploadService:
-
     @staticmethod
-    async def save_file(file: UploadFile) -> dict: # type: ignore
-        """
-        Save an uploaded file to disk under uploads/<type>/uuid.ext
-        Returns: dict with filename, type, and path
-        """
-        file_type = detect_file_type(file.filename) # type: ignore
+    async def save_file(file: UploadFile, type_folder: str) -> Dict[str, str]:
+        # Generate unique filename
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="Filename is required")
+        ext = os.path.splitext(file.filename)[1]
+        unique_name = f"{uuid.uuid4()}{ext}"
+        folder_path = os.path.join(UPLOAD_ROOT, type_folder)
 
-        target_dir = UPLOAD_DIR / file_type
-        target_dir.mkdir(parents=True, exist_ok=True)
+        os.makedirs(folder_path, exist_ok=True)
+        file_path = os.path.join(folder_path, unique_name)
 
-        new_filename = f"{uuid4()}{Path(file.filename).suffix}" # type: ignore
-        file_path = target_dir / new_filename
+        # Save file
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
 
-        # Save file to disk
-        with file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # Validate MIME type
+        if file.content_type not in ALLOWED_FILE_TYPES.get(type_folder, []):
+            # Delete the file if invalid
+            os.remove(file_path)
+            raise HTTPException(status_code=400, detail=f"Invalid file type: Only {type_folder} supported ")
 
-        return {
-            "filename": new_filename,
-            "file_type": file_type,
-            "path": str(file_path),
-            "content_type": file.content_type
-        } # type: ignore
+        return {"filename": unique_name, "path": file_path}
