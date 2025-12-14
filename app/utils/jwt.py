@@ -3,8 +3,9 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 from app.core.config import settings
-from app.schemas.function_return_schema.create_access_refresh_token_schema import AccessRefreshToken
+from app.schemas.function_return_schema.jwt_token_schema import AccessRefreshToken,JwtPayload
 # Secret keys — keep them safe and load from env in production
+
 ACCESS_SECRET_KEY: str = settings.ACCESS_TOKEN_SECRET
 REFRESH_SECRET_KEY: str = settings.REFRESH_TOKEN_SECRET
 
@@ -38,7 +39,7 @@ def create_token(payload: dict[str, Any], token_type: str = TokenType.ACCESS) ->
     token = jwt.encode(token_payload, secret, algorithm=ALGORITHM) # type: ignore
     return token
 
-def decode_token(token: str, token_type: str = TokenType.ACCESS) -> Optional[dict[str, Any]]:
+def decode_token(token: str, token_type: str = TokenType.ACCESS) -> Optional[JwtPayload]:
     """
     Decode a JWT token. Returns the payload if valid, None if invalid/expired.
     """

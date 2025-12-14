@@ -16,7 +16,7 @@ from datetime import timezone, datetime
 from typing import Optional
 from app.utils.jwt import create_access_refresh_tokens
 
-from app.schemas.function_return_schema.create_access_refresh_token_schema import JwtPayload,AccessRefreshToken
+from app.schemas.function_return_schema.jwt_token_schema import JwtPayload,AccessRefreshToken
 from app.schemas.api_response_model.user_login import LoginResponse
 from app.schemas.function_return_schema.user_repository_schema import VerifyResetPassResult
 from app.schemas.api_response_model.user_signup import SignupResponse 
